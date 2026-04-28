@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brussel Danst — Animator</title>
+<style>
+  :root {
+    --bg: #350358;
+    --ink: #FEE6FF;
+    --accent: #FED638;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 28px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  header .credit { opacity: 0.55; }
+  header .title { font-weight: 700; }
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    gap: 36px;
+  }
+
+  /* Stage: nu 2:1 omdat logo 290x146 is. Geen achtergrondkleur — paginakleur schijnt door. */
+  .stage {
+    width: min(720px, 92vw);
+    aspect-ratio: 290 / 146;
+  }
+  .stage svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+  .mood-picker {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: baseline;
+  }
+  .mood-btn {
+    background: none;
+    border: none;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: clamp(15px, 2.2vw, 20px);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    padding: 4px 0;
+    position: relative;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+  }
+  .mood-btn:hover { opacity: 0.75; }
+  .mood-btn.active { opacity: 1; }
+  .mood-btn.active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -6px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  footer {
+    display: flex;
+    justify-content: center;
+    padding: 28px 20px;
+  }
+  .export-btn {
+    background: var(--ink);
+    color: var(--bg);
+    border: none;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 14px 28px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .export-btn:hover:not(:disabled) { background: var(--accent); }
+  .export-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  @media (max-width: 480px) {
+    main { gap: 24px; padding: 12px; }
+    .mood-picker { gap: 20px; }
+    header { padding: 14px 16px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="title">Brussel Danst · Animator</span>
+  <span class="credit">The Kind Kids</span>
+</header>
+
+<main>
+  <div class="stage">
+    <svg id="logo" viewBox="0 0 290 146" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- Turbulence filter voor Zinneke (alleen op stroke toegepast) -->
+        <filter id="zinneke-wobble" x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence id="zinneke-turb" type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="1"/>
+          <feDisplacementMap id="zinneke-disp" in="SourceGraphic" scale="0"/>
+        </filter>
+      </defs>
+
+      <!-- BRUSSEL typografie -->
+      <g id="brussel-text" fill="#FFFAD4">
+        <path d="M19.4355 32.7578H38.3613C46.4505 32.7578 54.3362 35.1996 54.3362 43.4406C54.3362 47.6119 52.2503 50.2063 49.7065 51.5798V51.6815C54.0818 53.3094 56.6256 56.7686 56.6256 60.8382C56.6256 69.2826 50.1135 72.6401 41.7699 72.6401H19.4355V32.7578ZM40.091 45.3736C40.091 43.9493 38.87 43.1862 37.3946 43.1862H34.3421V47.9171H37.1911C39.1244 47.9171 40.1419 47.3067 40.1419 45.3736H40.091ZM41.4647 59.6682C41.4647 58.0403 40.1419 57.1755 38.3104 57.1755H34.3421V62.2625H38.6156C40.3963 62.2625 41.5156 61.3469 41.5156 59.6682H41.4647Z"/>
+        <path d="M59.6778 32.7598H76.9247C87.9138 32.7598 96.2065 36.2189 96.2065 46.2912C96.2065 51.2765 94.5276 54.9901 90.3558 57.6353L98.2924 72.6929H81.1473L75.8054 59.7719H74.6861V72.6929H59.627V32.8106L59.6778 32.7598ZM80.9947 46.6982C80.9947 44.9177 79.4684 43.9512 77.6878 43.9512H74.2282V49.9539H77.6878C79.6719 49.9539 80.9947 48.8348 80.9947 46.6982Z"/>
+        <path d="M99.7168 55.4988V32.7598H114.776V56.2618C114.776 58.7545 116.048 60.5349 118.693 60.5349C121.339 60.5349 122.611 58.7545 122.611 56.2618V32.7598H137.67V55.4988C137.67 68.1146 130.751 73.3542 118.693 73.3542C106.636 73.3542 99.7168 68.0637 99.7168 55.4988Z"/>
+        <path d="M139.959 68.3173L145.81 57.9397C149.574 60.7376 154.306 62.1111 157.613 62.1111C159.139 62.1111 159.75 61.7041 159.75 60.9919C159.75 60.3815 159.19 60.1271 156.494 59.6184L155.629 59.4658C149.218 58.1941 141.384 54.7349 141.384 45.9344C141.384 36.676 149.727 32.0977 158.325 32.0977C163.871 32.0977 170.077 33.8781 173.791 36.8286L168.449 47.0026C164.125 44.4082 160.157 43.2382 157.511 43.2382C156.239 43.2382 155.476 43.5435 155.476 44.103C155.476 44.8152 156.595 45.2222 158.274 45.6291L159.495 45.9344C166.313 47.5622 173.842 50.6144 173.842 59.1097C173.842 67.0964 167.941 73.3025 155.985 73.3025C152.424 73.3025 146.166 72.743 139.959 68.3173Z"/>
+        <path d="M174.758 68.3173L180.609 57.9397C184.373 60.7376 189.105 62.1111 192.412 62.1111C193.938 62.1111 194.548 61.7041 194.548 60.9919C194.548 60.3815 193.989 60.1271 191.292 59.6184L190.428 59.4658C184.017 58.1941 176.182 54.7349 176.182 45.9344C176.182 36.676 184.526 32.0977 193.124 32.0977C198.669 32.0977 204.876 33.8781 208.59 36.8286L203.248 47.0026C198.924 44.4082 194.955 43.2382 192.31 43.2382C191.038 43.2382 190.275 43.5435 190.275 44.103C190.275 44.8152 191.394 45.2222 193.073 45.6291L194.294 45.9344C201.111 47.5622 208.641 50.6144 208.641 59.1097C208.641 67.0964 202.739 73.3025 190.784 73.3025C187.222 73.3025 180.965 72.743 174.758 68.3173Z"/>
+        <path d="M211.947 32.7598H241.557V44.1547H226.803V47.2069H240.794V58.0931H226.803V61.2471H242.116V72.642H211.947V32.7598Z"/>
+        <path d="M246.289 32.7578H261.348V60.1769H274.83V72.6909H246.34V32.8087L246.289 32.7578Z"/>
+      </g>
+
+      <!-- VLAANDEREN FEEST typografie -->
+      <g id="vlaanderen-text" fill="#FFFAD4">
+        <path d="M80.8416 9.35938L76.8224 21.0087H74.4313L70.4121 9.35938H72.5489L75.6014 18.2108L78.654 9.35938H80.7907H80.8416Z"/>
+        <path d="M82.2656 9.35938H84.3006V18.8721H89.083V20.8052H82.2656V9.35938Z"/>
+        <path d="M89.6934 20.8055L93.7125 9.15625H96.1037L100.123 20.8055H97.9861L97.1721 18.4146H92.695L91.881 20.8055H89.7442H89.6934ZM93.3564 16.4816H96.4598L94.9335 12.005L93.3564 16.4816Z"/>
+        <path d="M100.682 20.8055L104.701 9.15625H107.092L111.111 20.8055H108.974L108.16 18.4146H103.683L102.869 20.8055H100.733H100.682ZM104.294 16.4816H107.397L105.871 12.005L104.294 16.4816Z"/>
+        <path d="M114.521 13.2255V20.856H112.486V9.35938H114.521L119.304 16.9899V9.35938H121.339V20.8052H119.304L114.521 13.1746V13.2255Z"/>
+        <path d="M123.627 20.8052V9.35938H127.443C129.325 9.35938 130.851 10.0207 131.92 11.0381C132.988 12.0555 133.548 13.5307 133.548 15.0568C133.548 16.4812 133.09 17.9056 132.072 18.9738C131.055 20.0421 129.579 20.8052 127.544 20.8052H123.627ZM125.662 11.3433V18.923H127.188C128.816 18.923 129.834 18.3634 130.495 17.6512C131.157 16.8882 131.411 15.9725 131.411 15.1586C131.411 14.192 131.055 13.2764 130.292 12.5642C129.579 11.852 128.46 11.3942 127.036 11.3942H125.662V11.3433Z"/>
+        <path d="M135.176 9.35938H141.993V11.2924H137.211V14.1412H141.84V16.0742H137.211V18.8212H141.993V20.7543H135.176V9.35938Z"/>
+        <path d="M143.826 20.8052V9.35938H147.133C147.896 9.35938 148.71 9.46112 149.473 9.71547C150.236 9.96982 150.949 10.3768 151.458 10.9872C151.966 11.5977 152.272 12.4116 152.272 13.5307C152.272 14.3447 152.068 15.006 151.712 15.5147C151.356 16.0234 150.898 16.4812 150.287 16.7864C150.542 17.2951 151 17.9056 151.508 18.4143C152.017 18.923 152.628 19.3808 153.187 19.5843V19.686L152.272 21.0595C151.712 21.0595 151.101 20.8052 150.593 20.3982C150.084 19.9913 149.575 19.4825 149.168 18.923C148.761 18.3634 148.456 17.8038 148.303 17.346C147.947 17.3969 147.54 17.3969 147.133 17.3969H145.861V20.8052H143.826ZM145.861 11.3433V15.4638H147.133C148.303 15.4638 149.066 15.2603 149.575 14.9042C150.084 14.5481 150.186 14.0394 150.186 13.429C150.186 12.8186 150.033 12.3098 149.575 11.9029C149.117 11.5468 148.354 11.2924 147.133 11.2924H145.861V11.3433Z"/>
+        <path d="M154.51 9.35938H161.327V11.2924H156.545V14.1412H161.174V16.0742H156.545V18.8212H161.327V20.7543H154.51V9.35938Z"/>
+        <path d="M165.193 13.2255V20.856H163.158V9.35938H165.193L169.976 16.9899V9.35938H172.011V20.8052H169.976L165.193 13.1746V13.2255Z"/>
+        <path d="M179.082 9.35938H186.154V11.2924H181.117V14.1412H186.001V16.0742H181.117V20.8052H179.082V9.35938Z"/>
+        <path d="M187.73 9.35938H194.548V11.2924H189.765V14.1412H194.395V16.0742H189.765V18.8212H194.548V20.7543H187.73V9.35938Z"/>
+        <path d="M196.381 9.35938H203.198V11.2924H198.416V14.1412H203.046V16.0742H198.416V18.8212H203.198V20.7543H196.381V9.35938Z"/>
+        <path d="M210.625 11.293C210.116 11.1912 209.302 11.0895 208.539 11.0895C207.878 11.0895 207.318 11.1404 206.962 11.293C206.606 11.4456 206.402 11.6999 206.402 12.1069C206.402 12.5139 206.657 12.87 207.013 13.1752C207.42 13.4804 207.929 13.7347 208.438 13.9382C208.692 14.04 208.946 14.1417 209.15 14.2435C209.608 14.4469 210.066 14.5995 210.625 15.0065C211.134 15.4135 211.541 15.8713 211.795 16.4817C211.897 16.787 211.948 17.1431 211.948 17.4991C211.948 18.6692 211.287 19.534 210.371 20.0935C209.455 20.6531 208.183 20.9583 207.064 20.9583C206.148 20.9583 205.283 20.8057 204.52 20.4496V18.5165C204.825 18.6183 205.283 18.7709 205.741 18.8726C206.199 18.9744 206.708 19.0253 207.217 19.0253C208.031 19.0253 208.641 18.8726 209.099 18.6183C209.557 18.3639 209.811 18.0078 209.811 17.55C209.811 17.0922 209.557 16.787 209.201 16.4817C208.794 16.1765 208.336 15.9222 207.827 15.7187C207.573 15.6169 207.318 15.5152 207.064 15.4135C206.555 15.21 206.148 15.0574 205.588 14.6504C205.08 14.2943 204.622 13.7856 204.418 13.1752C204.266 12.87 204.215 12.5139 204.215 12.1069C204.215 10.9878 204.774 10.2247 205.588 9.76687C206.402 9.25817 207.471 9.05469 208.539 9.05469C209.302 9.05469 209.964 9.15643 210.625 9.30904V11.1404V11.293Z"/>
+        <path d="M212.15 9.35938H221.155V11.2924H217.696V20.8052H215.661V11.2924H212.201V9.35938H212.15Z"/>
+      </g>
+
+      <!-- ============================================================
+           DANST letters — gegroepeerd voor animatie
+           Elke <g id="letter-X"> bevat:
+             - <path class="letter-bg"> = de paarse vulling (#350358)
+             - <g class="stroke-wrap"> met <path class="stroke-path"> erin
+           cx/cy data-attributen = rotatie/expressie center
+           ============================================================ -->
+
+      <g id="letter-D" data-cx="45" data-cy="91">
+        <path class="letter-bg" fill="#350358" d="M18.1113 72.1847C24.9287 68.6747 31.4916 66.4873 37.4441 65.8768C52.4015 64.2998 63.645 72.1338 65.0186 84.6988C66.7484 100.926 51.5366 115.017 29.8636 117.307C27.1672 117.612 24.6743 117.714 22.9445 117.663L21.0621 100.112L18.1113 72.2356V72.1847Z"/>
+        <g class="stroke-wrap">
+          <path class="stroke-path" fill="none" stroke="#FED638" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M19.2318 99.1967L21.216 117.713C22.8949 117.764 25.4387 117.663 28.1351 117.357C49.8081 115.068 65.0199 100.977 63.2901 84.7496C61.9673 72.1846 50.7238 64.3506 35.7155 65.9276C29.7122 66.538 23.1493 68.7255 16.3828 72.2355L18.1126 88.7683C23.5563 83.8339 32.1542 79.9169 39.1751 79.2047C49.4519 78.1364 54.6921 83.3252 51.5378 90.7523C49.4519 95.7375 42.1767 100.367 35.2577 101.079H35.512C30.4245 101.588 27.5754 99.0441 29.1017 95.3815C30.8824 91.1592 39.2259 83.9357 56.778 90.4979"/>
+        </g>
+      </g>
+
+      <g id="letter-A" data-cx="97" data-cy="105">
+        <path class="letter-bg" fill="#350358" d="M85.1653 129.617L73.8201 133.127C73.8201 133.127 73.9218 97.4164 88.1161 88.2597L72.9043 100.265L74.4306 82.3588L107.093 77.1191C107.093 77.1191 119.405 98.0268 121.592 126.87L89.0827 129.363L85.1144 129.668L85.1653 129.617Z"/>
+        <g class="stroke-wrap">
+          <path class="stroke-path" fill="none" stroke="#FED638" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M98.6994 91.1064C96.4608 92.1238 94.1715 93.7008 92.0856 95.7865C86.3366 101.382 84.149 108.504 87.2015 111.607C90.254 114.71 97.3766 112.675 103.126 107.08L90.5593 129.157L119.914 126.919C117.727 98.0756 105.415 77.168 105.415 77.168L72.7528 82.4076L71.2266 100.314L86.4384 88.3085C72.2441 97.4652 72.1423 133.176 72.1423 133.176L83.4876 129.666"/>
+        </g>
+      </g>
+
+      <g id="letter-N" data-cx="153" data-cy="103">
+        <path class="letter-bg" fill="#350358" d="M129.884 132.618L127.086 80.5781L146.164 79.459L140.721 90.7013C151.557 78.8994 165.751 74.2193 172.365 80.3237C178.979 86.4282 173.484 101.842 162.648 113.644L173.535 108.862L179.386 125.547L139.449 127.887L129.884 132.567V132.618Z"/>
+        <g class="stroke-wrap">
+          <path class="stroke-path" fill="none" stroke="#FED638" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M138.178 108.505L158.02 93.7015L137.619 127.988L177.556 125.648L171.705 108.963L160.818 113.744C171.654 101.942 177.2 86.4779 170.535 80.4244C163.87 74.3708 149.727 79 138.891 90.8019L144.334 79.5596L125.256 80.6787L128.054 132.719"/>
+        </g>
+      </g>
+
+      <g id="letter-S" data-cx="207" data-cy="103">
+        <path class="letter-bg" fill="#350358" d="M203.808 113.085L199.025 126.82C212.507 131.398 226.244 126.82 229.754 116.595C231.331 111.965 230.568 107.031 228.024 102.504C228.024 102.504 225.989 98.6375 221.97 94.6696L227.261 84.2412L215.458 79.5611C201.976 74.932 188.443 78.6455 185.238 87.9039C183.508 92.8891 185.187 98.3831 189.105 103.216C187.019 104.437 185.442 106.166 184.729 108.303C182.44 115.018 188.85 123.31 199.076 126.82"/>
+        <g class="stroke-wrap">
+          <path class="stroke-path" fill="none" stroke="#FED638" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M226.192 102.554C228.736 107.031 229.499 112.016 227.922 116.645C224.412 126.87 210.675 131.449 197.193 126.87C186.967 123.36 180.557 115.068 182.846 108.354C185.136 101.639 195.311 99.0952 205.537 102.605C212.558 105.047 217.442 109.32 216.475 112.22C215.509 115.119 208.946 115.526 201.925 113.085H202.027C188.545 108.455 180.15 97.213 183.355 87.9546C186.56 78.6963 200.093 74.9827 213.575 79.6119L225.378 84.292L217.951 98.9426L193.53 91.4138"/>
+        </g>
+      </g>
+
+      <g id="letter-T" data-cx="254" data-cy="92">
+        <path class="letter-bg" fill="#350358" d="M275.645 65.9258L274.169 87.393L258.5 76.8629L265.877 118.169L241.609 115.423L249.647 77.0155L234.283 86.5791L232.35 67.401L275.645 65.9258Z"/>
+        <g class="stroke-wrap">
+          <path class="stroke-path" fill="none" stroke="#FED638" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M275.899 65.4688L231.535 67.4018L233.519 86.5799L248.884 77.0163L240.845 115.423L265.113 118.17L257.736 76.8637L273.406 87.3938L274.372 73.9132"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div class="mood-picker" role="tablist" aria-label="Kies een mood">
+    <button class="mood-btn active" data-mood="zwanze" role="tab">Zwanze</button>
+    <button class="mood-btn" data-mood="guinguette" role="tab">Guinguette</button>
+    <button class="mood-btn" data-mood="bal" role="tab">Bal</button>
+    <button class="mood-btn" data-mood="zinneke" role="tab">Zinneke</button>
+  </div>
+</main>
+
+<footer>
+  <button class="export-btn" disabled title="Komt in Fase 3">Exporteer</button>
+</footer>
+
+<script>
+// ============================================================
+// Letters + path lengths
+// cx/cy zijn aangepast aan de nieuwe viewBox (290x146)
+// ============================================================
+const letters = [
+  { id: 'letter-D', cx: 45,  cy: 91,  index: 0 },
+  { id: 'letter-A', cx: 97,  cy: 105, index: 1 },
+  { id: 'letter-N', cx: 153, cy: 103, index: 2 },
+  { id: 'letter-S', cx: 207, cy: 103, index: 3 },
+  { id: 'letter-T', cx: 254, cy: 92,  index: 4 },
+];
+
+const letterEls = letters.map(l => {
+  const group = document.getElementById(l.id);
+  const strokeWrap = group.querySelector('.stroke-wrap');
+  const strokePath = group.querySelector('.stroke-path');
+  const bgShape = group.querySelector('.letter-bg');
+  const pathLength = strokePath.getTotalLength();
+  return { ...l, group, strokeWrap, strokePath, bgShape, pathLength };
+});
+
+const turbEl = document.getElementById('zinneke-turb');
+const dispEl = document.getElementById('zinneke-disp');
+
+// Base stroke-width: in nieuwe SVG is dit 3 (was 4.28). Belangrijk voor mood-formules.
+const BASE_STROKE_WIDTH = 3;
+
+function resetStroke() {
+  for (const l of letterEls) {
+    l.strokePath.removeAttribute('stroke-dasharray');
+    l.strokePath.removeAttribute('stroke-dashoffset');
+    l.strokePath.style.strokeWidth = '';
+    l.strokePath.removeAttribute('filter');
+  }
+  dispEl.setAttribute('scale', '0');
+}
+
+// ============================================================
+// Moods — transforms zijn iets verlaagd in amplitude omdat de
+// nieuwe viewBox (290x146) veel kleiner is dan de oude (708x708).
+// Vroeger 6px op 708 = 0.85% van breedte. Nu houden we ~zelfde
+// percentages aan: 6px op oud → ~2.5px op nieuw.
+//
+// Schaalfactor ≈ 290/708 ≈ 0.41
+// ============================================================
+const SCALE = 0.41;
+
+const moods = {
+  zwanze: {
+    transform: (letter, t) => {
+      const phase = letter.index * 0.35;
+      return {
+        groupTy: Math.sin(t * 1.2 + phase) * 6 * SCALE,
+        strokeRot: Math.sin(t * 1.0 + phase * 1.3) * 1.8,
+        strokeTx: Math.sin(t * 0.9 + phase) * 1.5 * SCALE,
+        strokeTy: Math.cos(t * 1.1 + phase) * 1.5 * SCALE,
+        strokeSkew: 0,
+      };
+    },
+    stroke: (letter, t) => {
+      const L = letter.pathLength;
+      const dashOn = L * 0.18;
+      const dashOff = L * 0.05;
+      const offset = -(t * 8 + letter.index * 7);
+      letter.strokePath.setAttribute('stroke-dasharray', `${dashOn} ${dashOff}`);
+      letter.strokePath.setAttribute('stroke-dashoffset', offset.toFixed(2));
+    },
+  },
+
+  guinguette: {
+    transform: (letter, t) => {
+      const bpm = 90;
+      const beat = (t * bpm / 60) % 3;
+      const beatEnv = Math.max(0, Math.sin(beat * Math.PI / 3)) * (beat < 1 ? 1.2 : 0.6);
+      const phase = letter.index * 0.25;
+      return {
+        groupTy: -beatEnv * 10 * SCALE + Math.sin(t * 2.0 + phase) * 2 * SCALE,
+        strokeRot: Math.sin(t * 1.8 + phase) * 4.5,
+        strokeTx: Math.sin(t * 1.5 + phase) * 2.5 * SCALE,
+        strokeTy: 0,
+        strokeSkew: 0,
+      };
+    },
+    stroke: (letter, t) => {
+      const bpm = 90;
+      const beat = (t * bpm / 60) % 3;
+      const beatEnv = Math.max(0, Math.sin(beat * Math.PI / 3)) * (beat < 1 ? 1.2 : 0.6);
+      // Width: relatieve verandering vergelijkbaar met oude versie (4.28→6.08 = ~+42%)
+      const width = BASE_STROKE_WIDTH * (1 + beatEnv * 0.42);
+      letter.strokePath.style.strokeWidth = width.toFixed(2) + 'px';
+    },
+  },
+
+  bal: {
+    transform: (letter, t) => {
+      const bpm = 124;
+      const beat = (t * bpm / 60) % 1;
+      const env = Math.pow(1 - beat, 3);
+      const phase = letter.index * 0.04;
+      return {
+        groupTy: -env * 22 * SCALE + Math.sin((t + phase) * 6.5) * 1.5 * SCALE,
+        strokeRot: Math.sin(t * 8 + letter.index * 1.2) * 3 * (0.3 + env),
+        strokeTx: Math.sin(t * 7 + letter.index) * 3 * SCALE,
+        strokeTy: env * -4 * SCALE,
+        strokeSkew: 0,
+      };
+    },
+    stroke: (letter, t) => {
+      const bpm = 124;
+      const beat = (t * bpm / 60) % 1;
+      const env = Math.pow(1 - beat, 3);
+      // Width punch: tot ~+82%
+      const width = BASE_STROKE_WIDTH * (1 + env * 0.82);
+      letter.strokePath.style.strokeWidth = width.toFixed(2) + 'px';
+      const L = letter.pathLength;
+      if (env > 0.3) {
+        const dashOn = L * (0.05 + env * 0.1);
+        const dashOff = L * 0.02 * env;
+        letter.strokePath.setAttribute('stroke-dasharray', `${dashOn} ${dashOff}`);
+        letter.strokePath.setAttribute('stroke-dashoffset', '0');
+      } else {
+        letter.strokePath.removeAttribute('stroke-dasharray');
+      }
+    },
+  },
+
+  zinneke: {
+    transform: (letter, t) => {
+      const f1 = 6.2 + letter.index * 1.7;
+      const f2 = 9.1 - letter.index * 0.9;
+      const f3 = 13.3 + letter.index * 0.6;
+      return {
+        groupTy: (Math.sin(t * f1) * 7 + Math.sin(t * f2 * 0.7) * 4) * SCALE,
+        strokeRot: Math.sin(t * f2) * 9 + Math.sin(t * f3 * 0.5) * 4,
+        strokeTx: (Math.sin(t * f1 * 1.1) * 5 + Math.cos(t * f3) * 3) * SCALE,
+        strokeTy: Math.cos(t * f2 * 1.3) * 5 * SCALE,
+        strokeSkew: Math.sin(t * f1 * 0.8) * 4,
+      };
+    },
+    stroke: (letter, t) => {
+      const L = letter.pathLength;
+      const a = 6 + Math.abs(Math.sin(t * 3 + letter.index)) * 20;
+      const b = 4 + Math.abs(Math.cos(t * 4.5 + letter.index * 1.7)) * 12;
+      const c = 10 + Math.abs(Math.sin(t * 2.7 + letter.index * 0.8)) * 8;
+      letter.strokePath.setAttribute('stroke-dasharray', `${a.toFixed(1)} ${b.toFixed(1)} ${c.toFixed(1)} ${(b*0.7).toFixed(1)}`);
+      const offset = -t * (30 + letter.index * 6);
+      letter.strokePath.setAttribute('stroke-dashoffset', offset.toFixed(2));
+      letter.strokePath.setAttribute('filter', 'url(#zinneke-wobble)');
+    },
+    filterUpdate: (t) => {
+      // Filter scale schaalt mee met de logo-grootte
+      const scale = (8 + Math.sin(t * 2.3) * 4 + Math.sin(t * 5.1) * 2) * SCALE;
+      dispEl.setAttribute('scale', scale.toFixed(2));
+      const freq = 0.025 + Math.sin(t * 0.7) * 0.01;
+      turbEl.setAttribute('baseFrequency', freq.toFixed(4));
+    },
+  },
+};
+
+// ============================================================
+// Intro draw-in (nog uitgeschakeld, code blijft)
+// ============================================================
+const INTRO_ENABLED = false;
+const INTRO_DURATION = 0.5;
+const INTRO_STAGGER = 0.06;
+const INTRO_PER_LETTER = INTRO_DURATION - INTRO_STAGGER * (letters.length - 1);
+
+function easeOutCubic(x) { return 1 - Math.pow(1 - x, 3); }
+
+function applyIntro(letter, introT) {
+  const start = letter.index * INTRO_STAGGER;
+  const localT = (introT - start) / INTRO_PER_LETTER;
+  const L = letter.pathLength;
+  if (localT <= 0) {
+    letter.strokePath.setAttribute('stroke-dasharray', `${L} ${L}`);
+    letter.strokePath.setAttribute('stroke-dashoffset', L.toFixed(2));
+    letter.strokePath.style.strokeWidth = BASE_STROKE_WIDTH + 'px';
+    letter.strokePath.removeAttribute('filter');
+  } else if (localT < 1) {
+    const eased = easeOutCubic(localT);
+    letter.strokePath.setAttribute('stroke-dasharray', `${L} ${L}`);
+    letter.strokePath.setAttribute('stroke-dashoffset', (L * (1 - eased)).toFixed(2));
+    letter.strokePath.style.strokeWidth = BASE_STROKE_WIDTH + 'px';
+    letter.strokePath.removeAttribute('filter');
+  }
+}
+
+// ============================================================
+// Render loop
+// ============================================================
+let currentMood = 'zwanze';
+let moodStartTime = performance.now();
+
+function frame(now) {
+  const t = (now - moodStartTime) / 1000;
+  const mood = moods[currentMood];
+
+  for (const letter of letterEls) {
+    const { groupTy, strokeRot, strokeTx, strokeTy, strokeSkew } = mood.transform(letter, t);
+
+    // Group: gedeelde Y-translatie
+    letter.group.setAttribute('transform', `translate(0 ${groupTy})`);
+
+    // Bg en stroke krijgen dezelfde expressie-transform (rotation/skew/translate)
+    const skewPart = strokeSkew ? ` skewX(${strokeSkew})` : '';
+    const expressionTransform =
+      `translate(${letter.cx} ${letter.cy}) rotate(${strokeRot})${skewPart} translate(${-letter.cx + strokeTx} ${-letter.cy + strokeTy})`;
+
+    letter.strokeWrap.setAttribute('transform', expressionTransform);
+    letter.bgShape.setAttribute('transform', expressionTransform);
+  }
+
+  if (INTRO_ENABLED && t < INTRO_DURATION) {
+    for (const letter of letterEls) applyIntro(letter, t);
+  } else {
+    if (mood.filterUpdate) mood.filterUpdate(t);
+    for (const letter of letterEls) {
+      if (mood.stroke) mood.stroke(letter, t);
+    }
+  }
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ============================================================
+// Mood switching
+// ============================================================
+document.querySelectorAll('.mood-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    resetStroke();
+    currentMood = btn.dataset.mood;
+    moodStartTime = performance.now();
+  });
+});
+</script>
+
+</body>
+</html>
