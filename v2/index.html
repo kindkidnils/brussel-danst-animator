@@ -117,7 +117,7 @@
 
   /* Stage: viewBox is 1873.5 x 1080 -> ratio ~ 1.735 */
   .stage {
-    width: min(720px, 73.6vw);
+    width: min(900px, 92vw);
     aspect-ratio: 1873.5 / 1080;
   }
   .stage svg {
@@ -287,7 +287,6 @@
     align-items: center;
     justify-content: center;
     transition: color 0.2s;
-    pointer-events: none; /* hover afhandelen op parent stack */
   }
   .toolbox-stack.export-stack:hover .export-btn {
     color: #3A0261;
@@ -310,6 +309,24 @@
     stroke-linecap: round;
     stroke-linejoin: round;
     stroke-width: 5px; /* dikker, vergelijkbaar met de box-border */
+  }
+
+  /* Spinner tijdens video-opname */
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2.5px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  /* Export-stack tijdens opname: pointer-events uit zodat je niet dubbel klikt */
+  .toolbox-stack.export-stack.recording {
+    pointer-events: none;
+    opacity: 0.85;
   }
 
   /* Rechtsboven: TKK credit-link */
@@ -522,14 +539,15 @@
   <div class="toolbox-stack export-stack">
     <div class="toolbox-label">Opslaan</div>
     <div class="export-group">
-      <button class="export-btn" disabled title="Komt later" aria-label="Exporteer animatie">
-        <span class="icon-slot" aria-hidden="true">
+      <button class="export-btn" id="export-btn" aria-label="Exporteer animatie als video">
+        <span class="icon-slot" id="export-icon" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
             <polyline class="st0" points="43 30 32 41 21 30"/>
             <path class="st0" d="M32,11v30"/>
             <path class="st0" d="M12,43v6c0,2.2,1.8,4,4,4h32c2.2,0,4-1.8,4-4v-6"/>
           </svg>
         </span>
+        <span class="spinner" id="export-spinner" aria-hidden="true" style="display:none"></span>
       </button>
     </div>
   </div>
@@ -861,6 +879,170 @@ document.getElementById('theme-toggle').addEventListener('click', () => {
   const current = document.body.dataset.theme;
   document.body.dataset.theme = current === 'day' ? 'night' : 'day';
 });
+
+// ============================================================
+// Video export — MP4 via mp4-muxer + WebCodecs VideoEncoder
+// Vereist Chrome/Edge 94+
+// ============================================================
+
+const LOOP_DURATIONS = { chillen: 12, dansen: 2, stampen: 3.871, raven: 4 };
+const EXPORT_W   = 940;
+const EXPORT_H   = 544;   // even getal vereist door H.264
+const EXPORT_FPS = 30;
+
+const exportCanvas = document.createElement('canvas');
+exportCanvas.width  = EXPORT_W;
+exportCanvas.height = EXPORT_H;
+const exportCtx = exportCanvas.getContext('2d');
+
+function resolveVars() {
+  const s = getComputedStyle(document.body);
+  return {
+    '--page-bg':      s.getPropertyValue('--page-bg').trim(),
+    '--letter-bg':    s.getPropertyValue('--letter-bg').trim(),
+    '--stroke-color': s.getPropertyValue('--stroke-color').trim(),
+    '--text-color':   s.getPropertyValue('--text-color').trim(),
+  };
+}
+
+function buildExportSVG(vars) {
+  const svgEl = document.getElementById('logo').cloneNode(true);
+  svgEl.setAttribute('width',  EXPORT_W);
+  svgEl.setAttribute('height', EXPORT_H);
+  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  bg.setAttribute('width', '100%'); bg.setAttribute('height', '100%');
+  bg.setAttribute('fill', vars['--page-bg']);
+  svgEl.insertBefore(bg, svgEl.firstChild);
+  svgEl.querySelectorAll('.static-text').forEach(el => {
+    el.removeAttribute('class'); el.setAttribute('fill', vars['--text-color']);
+  });
+  svgEl.querySelectorAll('.letter-bg-shape').forEach(el => {
+    el.removeAttribute('class'); el.setAttribute('fill', vars['--letter-bg']);
+  });
+  svgEl.querySelectorAll('.stroke-path').forEach(el => {
+    el.removeAttribute('class'); el.setAttribute('stroke', vars['--stroke-color']);
+  });
+  const styleEl = svgEl.querySelector('defs style');
+  if (styleEl) styleEl.remove();
+  return new Blob([new XMLSerializer().serializeToString(svgEl)], { type: 'image/svg+xml;charset=utf-8' });
+}
+
+// SVG blob renderen naar de export canvas
+async function renderFrame(vars) {
+  const blob = buildExportSVG(vars);
+  const url  = URL.createObjectURL(blob);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      exportCtx.clearRect(0, 0, EXPORT_W, EXPORT_H);
+      exportCtx.drawImage(img, 0, 0, EXPORT_W, EXPORT_H);
+      URL.revokeObjectURL(url);
+      resolve();
+    };
+    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+    img.src = url;
+  });
+}
+
+// Render de SVG voor een exact tijdstip t (seconden), onafhankelijk van performance.now()
+async function renderFrameAtTime(t, vars) {
+  const mood = moods[currentMood];
+  if (mood.filterUpdate) mood.filterUpdate(t);
+  for (const letter of letterEls) {
+    const { groupTy, strokeRot, strokeTx, strokeTy, strokeSkew } = mood.transform(letter, t);
+    letter.group.setAttribute('transform', `translate(0 ${groupTy})`);
+    const skewPart = strokeSkew ? ` skewX(${strokeSkew})` : '';
+    const expr = `translate(${letter.cx} ${letter.cy}) rotate(${strokeRot})${skewPart} translate(${-letter.cx + strokeTx} ${-letter.cy + strokeTy})`;
+    letter.strokeWrap.setAttribute('transform', expr);
+    letter.bgShape.setAttribute('transform', expr);
+    if (mood.stroke) mood.stroke(letter, t);
+  }
+  await renderFrame(vars);
+}
+
+async function loadMp4Muxer() {
+  if (window.Mp4Muxer) return window.Mp4Muxer;
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/mp4-muxer@latest/build/mp4-muxer.js';
+    s.onload  = () => resolve(window.Mp4Muxer);
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+async function startExport() {
+  const exportStack = document.querySelector('.export-stack');
+  const exportIcon  = document.getElementById('export-icon');
+  const spinner     = document.getElementById('export-spinner');
+  const mood        = currentMood;
+  const duration    = LOOP_DURATIONS[mood];
+  const totalFrames = Math.ceil(duration * EXPORT_FPS);
+
+  exportStack.classList.add('recording');
+  exportIcon.style.display = 'none';
+  spinner.style.display    = 'block';
+
+  try {
+    const Mp4Muxer = await loadMp4Muxer();
+
+    const muxer = new Mp4Muxer.Muxer({
+      target: new Mp4Muxer.ArrayBufferTarget(),
+      video: { codec: 'avc', width: EXPORT_W, height: EXPORT_H, frameRate: EXPORT_FPS },
+      fastStart: 'in-memory',
+    });
+
+    const encoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error:  (e) => console.error('VideoEncoder fout:', e),
+    });
+    encoder.configure({
+      codec: 'avc1.42001f', width: EXPORT_W, height: EXPORT_H,
+      framerate: EXPORT_FPS, bitrate: 6_000_000,
+    });
+
+    // Herstart animatie voor schone loop
+    resetStroke();
+    moodStartTime = performance.now();
+
+    for (let i = 0; i < totalFrames; i++) {
+      const frameSec = i / EXPORT_FPS;
+      const frameUs  = Math.round(frameSec * 1_000_000);
+
+      // t is puur op basis van frame-index — render-snelheid heeft geen invloed
+      await renderFrameAtTime(frameSec, resolveVars());
+
+      const frame = new VideoFrame(exportCanvas, {
+        timestamp: frameUs,
+        duration:  Math.round(1_000_000 / EXPORT_FPS),
+      });
+      encoder.encode(frame, { keyFrame: i % 10 === 0 });
+      frame.close();
+    }
+
+    await encoder.flush();
+    muxer.finalize();
+
+    const blob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `brussel-danst-${mood}.mp4`; a.click();
+    URL.revokeObjectURL(url);
+
+  } catch (err) {
+    console.error('Export mislukt:', err);
+    alert(`Export mislukt: ${err.message}\n\nZorg dat je Chrome of Edge 94+ gebruikt.`);
+  } finally {
+    exportStack.classList.remove('recording');
+    exportIcon.style.display = 'block';
+    spinner.style.display    = 'none';
+    resetStroke();
+    moodStartTime = performance.now();
+  }
+}
+
+document.querySelector('.export-stack').addEventListener('click', startExport);
+
 </script>
 
 </body>
